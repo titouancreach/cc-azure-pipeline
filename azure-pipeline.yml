@@ -1,0 +1,38 @@
+pool:
+  vmImage: '{{cookiecutter.imageName}}'
+
+trigger:
+  paths:
+    include:
+      - 'front/*'
+
+variables:
+  buildConfiguration: Release
+
+steps:
+  - task: UseDotNet@2
+    inputs:
+      version: 6.0.x
+      includePreviewVersions: true
+
+  - script: |
+      dotnet publish front --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/front
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT : 1
+    displayName: 'Publication du projet'
+
+  - task: ArchiveFiles@1
+    displayName: Création de l'archive
+    inputs:
+      rootFolder: $(Build.ArtifactStagingDirectory)/front
+      includeRootFolder: false
+      archiveFile: "$(Build.ArtifactStagingDirectory)/front/$(Build.BuildId).zip"
+      archiveType: default
+      replaceExistingArchive: true
+
+  - task: PublishBuildArtifacts@1
+    displayName: Publication de l'archive
+    inputs:
+      pathToPublish: "$(Build.ArtifactStagingDirectory)/front/$(Build.BuildId).zip"
+      artifactName: $(Build.SourceBranchName)
+    condition: and(succeeded(), in(variables['Build.SourceBranchName'], 'main'))
